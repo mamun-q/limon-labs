@@ -415,11 +415,6 @@
     "varying mediump vec2 vUv;" +
     "uniform sampler2D uTex; uniform vec2 uRes; uniform vec2 uImg;" +
     "uniform float uTime; uniform vec2 uShift;" +
-    "float hash(vec2 p){ p = fract(p * vec2(234.34, 435.345)); p += dot(p, p + 34.23); return fract(p.x * p.y); }" +
-    "float noise(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);" +
-    "  float a = hash(i); float b = hash(i + vec2(1.0, 0.0));" +
-    "  float cc = hash(i + vec2(0.0, 1.0)); float d = hash(i + vec2(1.0, 1.0));" +
-    "  return mix(mix(a, b, f.x), mix(cc, d, f.x), f.y); }" +
     "void main(){" +
     "  float scale = max(uRes.x / uImg.x, uRes.y / uImg.y) * 1.02;" +
     "  vec2 scaled = uImg * scale;" +
@@ -429,18 +424,15 @@
     "  float lum = dot(probe, vec3(0.299, 0.587, 0.114));" +
     "  float depth = clamp(0.7 * lum + 0.3 * (1.0 - vUv.y), 0.0, 1.0);" +
     "  float fuel = smoothstep(0.22, 0.7, lum);" +
-    "  float rise = noise(vec2(uvImg.x * 5.0, uvImg.y * 2.6 - uTime * 0.55));" +
-    "  float rise2 = noise(vec2(uvImg.x * 11.0 + 7.0, uvImg.y * 5.0 - uTime * 0.95));" +
+    "  float wave = sin(uvImg.x * 4.0 + uTime * 0.25 + sin(uvImg.y * 3.0 - uTime * 0.18) * 1.5);" +
+    "  float ripple = sin(uvImg.x * 9.0 - uTime * 0.5 + uvImg.y * 4.0);" +
     "  vec2 sway = vec2(sin(uTime * 0.21), cos(uTime * 0.15)) * 0.6;" +
     "  vec2 mv = (uShift + sway) * (depth - 0.45) * 0.034;" +
-    "  mv.x += sin(uvImg.y * 22.0 - uTime * 2.3 + rise * 6.28) * 0.0045 * fuel;" +
-    "  mv.y -= rise2 * 0.002 * fuel;" +
+    "  mv.x += wave * 0.006 * fuel;" +
+    "  mv.x += sin(vUv.y * 140.0 + uTime * 1.3) * 0.0009 * (1.0 - smoothstep(0.05, 0.3, vUv.y));" +
     "  vec3 col = texture2D(uTex, uvImg + mv).rgb;" +
-    "  float heat = rise * 0.65 + rise2 * 0.35;" +
-    "  col *= 1.0 + (heat - 0.5) * 0.5 * fuel;" +
-    "  col += vec3(0.45, 1.0, 0.75) * pow(max(heat - 0.35, 0.0), 2.0) * 0.55 * fuel;" +
-    "  float flick = 0.97 + 0.03 * sin(uTime * 9.0 + sin(uTime * 23.7) * 1.5);" +
-    "  col *= mix(1.0, flick, fuel);" +
+    "  col *= 1.0 + wave * 0.16 * fuel + ripple * 0.05 * fuel;" +
+    "  col += vec3(0.35, 1.0, 0.7) * pow(max(wave, 0.0), 3.0) * 0.10 * fuel;" +
     "  float g = 1.0 - vUv.y;" +
     "  float ga = g < 0.46 ? mix(0.14, 0.50, g / 0.46) : mix(0.50, 0.80, (g - 0.46) / 0.54);" +
     "  col = mix(col, vec3(0.008, 0.04, 0.024), ga);" +
