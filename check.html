@@ -12,11 +12,12 @@
   .k{color:#34d399;font-weight:700}
   .ok{color:#6ee7b7}.bad{color:#fca5a5}
   .log{color:#fcd34d;font-size:.78rem;white-space:pre-wrap}
+  canvas.sample{display:block;width:180px;height:320px;margin-top:12px;border-radius:12px;border:1px solid rgba(52,211,153,.35)}
 </style>
 </head>
 <body>
 <h1>LIMON Labs — 3D পরীক্ষা</h1>
-<p class="sub">এই পেজটা তোমার ফোন নিজেই সাইটের আসল 3D কোড চালিয়ে পরীক্ষা করে। নিচের ফলাফলের একটা screenshot পাঠালেই হবে।</p>
+<p class="sub">এই পেজটা তোমার ফোনে সাইটের আসল ব্যাকগ্রাউন্ড-3D কোড চালিয়ে পরীক্ষা করে। নিচের ফলাফলের একটা screenshot পাঠালেই হবে।</p>
 <div id="out"></div>
 
 <script>
@@ -34,102 +35,113 @@
 
   var gl = null;
   try {
-    gl = document.createElement("canvas").getContext("webgl", { alpha: true, antialias: true, powerPreference: "low-power" });
+    gl = document.createElement("canvas").getContext("webgl", { alpha: false, antialias: false, powerPreference: "low-power" });
   } catch (e) { /* fallthrough */ }
-  if (!gl) { row("WebGL (3D ইঞ্জিন)", "পাওয়া যায়নি ✗", "bad"); return; }
+  if (!gl) { row("WebGL (3D ইঞ্জিন)", "পাওয়া যায়নি ✗", "bad"); finish(false); return; }
   row("WebGL (3D ইঞ্জিন)", "আছে ✓", "ok");
   var dbg = gl.getExtension("WEBGL_debug_renderer_info");
   if (dbg) row("গ্রাফিক্স", gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL));
 
-  function testProg(name, vsSrc, fsSrc) {
-    function sh(type, src) {
-      var s = gl.createShader(type);
-      gl.shaderSource(s, src); gl.compileShader(s);
-      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) return { err: gl.getShaderInfoLog(s) };
-      return { s: s };
-    }
-    var v = sh(gl.VERTEX_SHADER, vsSrc);
-    if (v.err) { row(name, "vertex কম্পাইল হয়নি ✗", "bad", v.err); return false; }
-    var f = sh(gl.FRAGMENT_SHADER, fsSrc);
-    if (f.err) { row(name, "fragment কম্পাইল হয়নি ✗", "bad", f.err); return false; }
-    var pr = gl.createProgram();
-    gl.attachShader(pr, v.s); gl.attachShader(pr, f.s); gl.linkProgram(pr);
-    if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) {
-      row(name, "লিংক হয়নি ✗", "bad", gl.getProgramInfoLog(pr));
-      return false;
-    }
-    row(name, "চলছে ✓", "ok");
-    return true;
+  /* The site's CURRENT background shaders, copied exactly from script.js */
+  var BG_VS = "attribute vec2 p; varying mediump vec2 vUv;" +
+    "void main(){ vUv = p * 0.5 + 0.5; gl_Position = vec4(p, 0.0, 1.0); }";
+  var BG_FS = "precision mediump float;" +
+    "varying mediump vec2 vUv;" +
+    "uniform sampler2D uTex; uniform vec2 uRes; uniform vec2 uImg;" +
+    "uniform float uTime; uniform vec2 uShift;" +
+    "void main(){" +
+    "  float scale = max(uRes.x / uImg.x, uRes.y / uImg.y) * 1.02;" +
+    "  vec2 scaled = uImg * scale;" +
+    "  vec2 offPx = vec2((uRes.x - scaled.x) * 0.5, uRes.y - scaled.y);" +
+    "  vec2 uvImg = (vUv * uRes - offPx) / scaled;" +
+    "  vec3 probe = texture2D(uTex, uvImg).rgb;" +
+    "  float lum = dot(probe, vec3(0.299, 0.587, 0.114));" +
+    "  float depth = clamp(0.7 * lum + 0.3 * (1.0 - vUv.y), 0.0, 1.0);" +
+    "  vec2 sway = vec2(sin(uTime * 0.21), cos(uTime * 0.15)) * 0.6;" +
+    "  vec2 mv = (uShift + sway) * (depth - 0.45) * 0.034;" +
+    "  vec3 col = texture2D(uTex, uvImg + mv).rgb;" +
+    "  float g = 1.0 - vUv.y;" +
+    "  float ga = g < 0.46 ? mix(0.14, 0.50, g / 0.46) : mix(0.50, 0.80, (g - 0.46) / 0.54);" +
+    "  col = mix(col, vec3(0.008, 0.04, 0.024), ga);" +
+    "  gl_FragColor = vec4(col, 1.0);" +
+    "}";
+
+  function sh(type, src) {
+    var s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) return { err: gl.getShaderInfoLog(s) };
+    return { s: s };
   }
+  var v = sh(gl.VERTEX_SHADER, BG_VS);
+  if (v.err) { row("ব্যাকগ্রাউন্ড শেডার", "vertex কম্পাইল হয়নি ✗", "bad", v.err); finish(false); return; }
+  var f = sh(gl.FRAGMENT_SHADER, BG_FS);
+  if (f.err) { row("ব্যাকগ্রাউন্ড শেডার", "fragment কম্পাইল হয়নি ✗", "bad", f.err); finish(false); return; }
+  var pr = gl.createProgram();
+  gl.attachShader(pr, v.s); gl.attachShader(pr, f.s); gl.linkProgram(pr);
+  if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) {
+    row("ব্যাকগ্রাউন্ড শেডার", "লিংক হয়নি ✗", "bad", gl.getProgramInfoLog(pr));
+    finish(false); return;
+  }
+  row("ব্যাকগ্রাউন্ড শেডার", "চলছে ✓", "ok");
 
-  /* --- Program B: glass orb (exact site source) --- */
-  var orbOK = testProg("গোলকের শেডার",
-    "attribute vec3 p; attribute vec3 n;" +
-    "uniform mat4 uMVP; uniform mat4 uModel;" +
-    "varying vec3 vN; varying vec3 vWP; varying vec3 vObj;" +
-    "void main(){ vObj = p; vN = mat3(uModel) * n; vec4 wp = uModel * vec4(p, 1.0); vWP = wp.xyz;" +
-    " gl_Position = uMVP * vec4(p, 1.0); }",
-    "precision mediump float;" +
-    "varying vec3 vN; varying vec3 vWP; varying vec3 vObj;" +
-    "uniform float uTime; uniform vec3 uCam;" +
-    "void main(){" +
-    "  vec3 N = normalize(vN); vec3 V = normalize(uCam - vWP);" +
-    "  float fres = pow(1.0 - abs(dot(N, V)), 2.0);" +
-    "  float swirl = sin(vObj.y * 7.0 + uTime * 0.6 + sin(vObj.x * 5.0 - uTime * 0.45) * 1.6) * 0.5 + 0.5;" +
-    "  float swirl2 = sin(vObj.z * 9.0 - uTime * 0.35 + vObj.y * 4.0) * 0.5 + 0.5;" +
-    "  vec3 deep = vec3(0.012, 0.16, 0.10);" +
-    "  vec3 mid = vec3(0.03, 0.48, 0.30);" +
-    "  vec3 col = mix(deep, mid, swirl * 0.45 + swirl2 * 0.25);" +
-    "  col += vec3(0.10, 0.85, 0.55) * pow(swirl * swirl2, 2.0) * 0.55;" +
-    "  vec3 L = normalize(vec3(0.5, 0.75, 0.85));" +
-    "  float spec = pow(max(dot(reflect(-L, N), V), 0.0), 70.0) * 1.4;" +
-    "  vec3 L2 = normalize(vec3(-0.7, -0.35, 0.6));" +
-    "  float spec2 = pow(max(dot(reflect(-L2, N), V), 0.0), 26.0) * 0.35;" +
-    "  col += vec3(0.85, 1.0, 0.95) * spec + vec3(0.35, 0.75, 0.9) * spec2;" +
-    "  col = mix(col, vec3(0.45, 1.0, 0.78), fres * 0.95);" +
-    "  float alpha = mix(0.62, 1.0, fres);" +
-    "  gl_FragColor = vec4(col, alpha);" +
-    "}");
+  /* Full-path test: real bg.webp texture + one real frame, drawn live below */
+  var cv = document.createElement("canvas");
+  cv.width = 180; cv.height = 320; cv.className = "sample";
+  var gl2 = cv.getContext("webgl", { alpha: false, antialias: false, preserveDrawingBuffer: true });
+  var img = new Image();
+  img.onload = function () {
+    try {
+      var pr2 = gl2.createProgram();
+      function sh2(t, src) { var s = gl2.createShader(t); gl2.shaderSource(s, src); gl2.compileShader(s); return s; }
+      gl2.attachShader(pr2, sh2(gl2.VERTEX_SHADER, BG_VS));
+      gl2.attachShader(pr2, sh2(gl2.FRAGMENT_SHADER, BG_FS));
+      gl2.linkProgram(pr2); gl2.useProgram(pr2);
+      var buf = gl2.createBuffer();
+      gl2.bindBuffer(gl2.ARRAY_BUFFER, buf);
+      gl2.bufferData(gl2.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl2.STATIC_DRAW);
+      var loc = gl2.getAttribLocation(pr2, "p");
+      gl2.enableVertexAttribArray(loc);
+      gl2.vertexAttribPointer(loc, 2, gl2.FLOAT, false, 0, 0);
+      var tex = gl2.createTexture();
+      gl2.bindTexture(gl2.TEXTURE_2D, tex);
+      gl2.pixelStorei(gl2.UNPACK_FLIP_Y_WEBGL, true);
+      gl2.texImage2D(gl2.TEXTURE_2D, 0, gl2.RGBA, gl2.RGBA, gl2.UNSIGNED_BYTE, img);
+      gl2.texParameteri(gl2.TEXTURE_2D, gl2.TEXTURE_WRAP_S, gl2.CLAMP_TO_EDGE);
+      gl2.texParameteri(gl2.TEXTURE_2D, gl2.TEXTURE_WRAP_T, gl2.CLAMP_TO_EDGE);
+      gl2.texParameteri(gl2.TEXTURE_2D, gl2.TEXTURE_MIN_FILTER, gl2.LINEAR);
+      gl2.texParameteri(gl2.TEXTURE_2D, gl2.TEXTURE_MAG_FILTER, gl2.LINEAR);
+      gl2.uniform1i(gl2.getUniformLocation(pr2, "uTex"), 0);
+      gl2.uniform2f(gl2.getUniformLocation(pr2, "uRes"), cv.width, cv.height);
+      gl2.uniform2f(gl2.getUniformLocation(pr2, "uImg"), img.naturalWidth, img.naturalHeight);
+      gl2.uniform1f(gl2.getUniformLocation(pr2, "uTime"), 2.0);
+      gl2.uniform2f(gl2.getUniformLocation(pr2, "uShift"), 0, 0);
+      gl2.viewport(0, 0, cv.width, cv.height);
+      gl2.drawArrays(gl2.TRIANGLE_STRIP, 0, 4);
+      var px = new Uint8Array(4);
+      gl2.readPixels(90, 160, 1, 1, gl2.RGBA, gl2.UNSIGNED_BYTE, px);
+      var good = px[1] > 12;
+      row("আসল ছবি + ফ্রেম", good ? "আঁকা হয়েছে ✓ (মাঝের রং: " + px[0] + "," + px[1] + "," + px[2] + ")" : "ছবি আঁকা যায়নি ✗ (রং: " + px[0] + "," + px[1] + "," + px[2] + ")", good ? "ok" : "bad");
+      var label = document.createElement("div");
+      label.className = "row";
+      label.innerHTML = '<span class="k">নমুনা:</span> তোমার ফোনে আঁকা 3D ব্যাকগ্রাউন্ড ↓';
+      out.appendChild(label);
+      out.appendChild(cv);
+      finish(good);
+    } catch (e) {
+      row("আসল ছবি + ফ্রেম", "ব্যতিক্রম ✗", "bad", String(e));
+      finish(false);
+    }
+  };
+  img.onerror = function () { row("আসল ছবি (bg.webp)", "লোড হয়নি ✗", "bad"); finish(false); };
+  img.src = "bg.webp";
 
-  /* --- Program C: rings / sparkles / core (exact site source, fixed) --- */
-  var fxOK = testProg("বলয়-ঝিলিকের শেডার",
-    "attribute vec3 p; attribute float aSeed;" +
-    "uniform mat4 uMVP; uniform highp float uPoint;" +
-    "varying float vSeed;" +
-    "void main(){ vSeed = aSeed;" +
-    "  vec4 mv = uMVP * vec4(p, 1.0);" +
-    "  if (uPoint > 0.5) { gl_PointSize = (2.2 + aSeed * 3.4) * (120.0 / -mv.z); }" +
-    "  gl_Position = mv; }",
-    "precision mediump float;" +
-    "uniform vec4 uColor; uniform highp float uPoint; uniform float uTime;" +
-    "varying float vSeed;" +
-    "void main(){" +
-    "  float a = uColor.a;" +
-    "  if (uPoint > 0.5) {" +
-    "    vec2 d = gl_PointCoord - 0.5;" +
-    "    float m = smoothstep(0.5, 0.05, length(d));" +
-    "    float tw = 0.65 + 0.35 * sin(uTime * (1.2 + vSeed * 2.0) + vSeed * 40.0);" +
-    "    a *= m * tw;" +
-    "  }" +
-    "  gl_FragColor = vec4(uColor.rgb, a);" +
-    "}");
-
-  /* --- Program D: halo glow (exact site source) --- */
-  var glowOK = testProg("আভার শেডার",
-    "attribute vec2 p; uniform mat4 uMVP; varying vec2 vUv;" +
-    "void main(){ vUv = p * 0.5 + 0.5; gl_Position = uMVP * vec4(p, 0.0, 1.0); }",
-    "precision mediump float; varying vec2 vUv;" +
-    "uniform vec3 uTint; uniform float uAlpha;" +
-    "void main(){ float d = length(vUv - 0.5) * 2.0;" +
-    "  float a = pow(max(0.0, 1.0 - d), 2.4);" +
-    "  gl_FragColor = vec4(uTint, a * uAlpha); }");
-
-  row("সব মিলিয়ে", (orbOK && fxOK && glowOK) ? "তোমার ফোনে 3D চলবে ✓ এবার সাইটটা খুলে দেখো" : "কোথাও আটকাচ্ছে — ওপরের লেখাটা দেখাও", (orbOK && fxOK && glowOK) ? "ok" : "bad");
-
-  fetch("script.js", { cache: "no-store" }).then(function (r) { return r.text(); }).then(function (t) {
-    var fresh = t.indexOf("uniform mat4 uMVP; uniform highp float uPoint;") !== -1;
-    row("সার্ভারের কোড", fresh ? "সর্বশেষ (ঠিক করা) সংস্করণ ✓" : "পুরনো কোড!", fresh ? "ok" : "bad");
-  }).catch(function () { row("সার্ভারের কোড", "যাচাই করা যায়নি"); });
+  function finish(shaderOK) {
+    fetch("script.js", { cache: "no-store" }).then(function (r) { return r.text(); }).then(function (t) {
+      var fresh = t.indexOf("Live 3D depth background") !== -1;
+      row("সার্ভারের কোড", fresh ? "সর্বশেষ (3D ব্যাকগ্রাউন্ড) সংস্করণ ✓" : "পুরনো কোড!", fresh ? "ok" : "bad");
+      row("সব মিলিয়ে", (shaderOK && fresh) ? "তোমার ফোনে 3D ব্যাকগ্রাউন্ড চলবে ✓ এবার সাইটটা খুলে দেখো" : "কোথাও আটকাচ্ছে — এই পেজের screenshot টা পাঠাও", (shaderOK && fresh) ? "ok" : "bad");
+    }).catch(function () { row("সার্ভারের কোড", "যাচাই করা যায়নি"); });
+  }
 })();
 </script>
 </body>
