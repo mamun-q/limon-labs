@@ -67,7 +67,7 @@ body{
 .site-nav a:hover,.site-nav a:focus-visible{color:var(--emerald-bright)}
 
 /* ---------- Hero ---------- */
-.hero{position:relative;text-align:center;padding:8px 18px 64px;max-width:1120px;margin:0 auto}
+.hero{position:relative;text-align:center;padding:44px 18px 64px;max-width:1120px;margin:0 auto}
 /* Design 4 hero: no panel, no border — the live 3D orb floats directly
    over the page-wide aurora backdrop. The still painting underneath is
    the fallback if WebGL is unavailable. */
