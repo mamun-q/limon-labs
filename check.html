@@ -119,8 +119,10 @@
     "attribute vec2 p; uniform mat4 uMVP; varying vec2 vUv;" +
     "void main(){ vUv = p * 0.5 + 0.5; gl_Position = uMVP * vec4(p, 0.0, 1.0); }",
     "precision mediump float; varying vec2 vUv;" +
-    "uniform sampler2D uTex; uniform vec3 uTint; uniform float uAlpha;" +
-    "void main(){ float a = texture2D(uTex, vUv).a; gl_FragColor = vec4(uTint, a * uAlpha); }");
+    "uniform vec3 uTint; uniform float uAlpha;" +
+    "void main(){ float d = length(vUv - 0.5) * 2.0;" +
+    "  float a = pow(max(0.0, 1.0 - d), 2.4);" +
+    "  gl_FragColor = vec4(uTint, a * uAlpha); }");
 
   row("সব মিলিয়ে", (orbOK && fxOK && glowOK) ? "তোমার ফোনে 3D চলবে ✓ এবার সাইটটা খুলে দেখো" : "কোথাও আটকাচ্ছে — ওপরের লেখাটা দেখাও", (orbOK && fxOK && glowOK) ? "ok" : "bad");
 

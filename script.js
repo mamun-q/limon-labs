@@ -199,27 +199,6 @@
   }
   var sparkBuf = vbo(sparkPos), sparkSeedBuf = vbo(sparkSeed);
 
-  /* soft radial glow texture, drawn on a 2D canvas */
-  function glowTexture() {
-    var c = document.createElement("canvas");
-    c.width = c.height = 128;
-    var g = c.getContext("2d");
-    var grad = g.createRadialGradient(64, 64, 2, 64, 64, 64);
-    grad.addColorStop(0, "rgba(255,255,255,0.85)");
-    grad.addColorStop(0.35, "rgba(255,255,255,0.28)");
-    grad.addColorStop(1, "rgba(255,255,255,0)");
-    g.fillStyle = grad;
-    g.fillRect(0, 0, 128, 128);
-    var t = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, t);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, c);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    return t;
-  }
-
   /* Design 4: the canvas is transparent and the orb floats directly over
      the page-wide aurora backdrop — no backdrop texture to load, so the
      scene starts as soon as the shader programs are ready. */
@@ -227,7 +206,6 @@
   canvas.classList.add("on");
   heroImg.style.opacity = "0";
   requestAnimationFrame(tick);
-  var glowTex = glowTexture();
 
   /* ----- sizing ----- */
   var proj = mIdent();
@@ -322,12 +300,17 @@
     gl.drawElements(gl.TRIANGLES, geo.count, gl.UNSIGNED_SHORT, 0);
   }
   /* glow quad has its own minimal program (needs a 3D transform) */
+  /* Halo: procedural radial falloff, NO texture — a canvas-texture halo
+     blew out to a white disc on PowerVR/Firefox (premultiply bug), so the
+     gradient is computed in the shader instead; identical on every GPU. */
   var progGlow = makeProg(
     "attribute vec2 p; uniform mat4 uMVP; varying vec2 vUv;" +
     "void main(){ vUv = p * 0.5 + 0.5; gl_Position = uMVP * vec4(p, 0.0, 1.0); }",
     "precision mediump float; varying vec2 vUv;" +
-    "uniform sampler2D uTex; uniform vec3 uTint; uniform float uAlpha;" +
-    "void main(){ float a = texture2D(uTex, vUv).a; gl_FragColor = vec4(uTint, a * uAlpha); }"
+    "uniform vec3 uTint; uniform float uAlpha;" +
+    "void main(){ float d = length(vUv - 0.5) * 2.0;" +
+    "  float a = pow(max(0.0, 1.0 - d), 2.4);" +
+    "  gl_FragColor = vec4(uTint, a * uAlpha); }"
   );
   function drawGlowQuad(model) {
     if (!progGlow) return;
@@ -336,9 +319,6 @@
     gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
     gl.enableVertexAttribArray(loc);
     gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, glowTex);
-    gl.uniform1i(gl.getUniformLocation(progGlow, "uTex"), 0);
     gl.uniformMatrix4fv(gl.getUniformLocation(progGlow, "uMVP"), false, mMul(proj, model));
     gl.uniform3f(gl.getUniformLocation(progGlow, "uTint"), 0.15, 0.85, 0.55);
     gl.uniform1f(gl.getUniformLocation(progGlow, "uAlpha"), 0.55);
