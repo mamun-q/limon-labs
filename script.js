@@ -124,7 +124,7 @@
   /* ----- Program C: additive glow / rings / sparkles / core ----- */
   var progFx = makeProg(
     "attribute vec3 p; attribute float aSeed;" +
-    "uniform mat4 uMVP; uniform float uPoint; uniform float uTime;" +
+    "uniform mat4 uMVP; uniform highp float uPoint;" +
     "varying float vSeed;" +
     "void main(){ vSeed = aSeed;" +
     "  vec4 mv = uMVP * vec4(p, 1.0);" +
