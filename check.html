@@ -67,9 +67,9 @@
     "  mv.y -= (0.5 + 0.5 * tongue) * 0.0016 * fuel;" +
     "  mv.x += sin(vUv.y * 140.0 + uTime * 13.0) * 0.0009 * (1.0 - smoothstep(0.05, 0.3, vUv.y));" +
     "  vec3 col = texture2D(uTex, uvImg + mv).rgb;" +
-    "  col *= 1.0 + tongue * 0.13 * fuel + wave * 0.08 * fuel + ripple * 0.04 * fuel;" +
-    "  col += vec3(0.35, 1.0, 0.7) * pow(max(tongue, 0.0), 3.0) * 0.08 * fuel;" +
-    "  col *= mix(1.0, 0.96 + 0.04 * sin(uTime * 7.0 + sin(uTime * 13.0) * 1.5), fuel);" +
+    "  col *= 1.0 + tongue * 0.20 * fuel + wave * 0.08 * fuel + ripple * 0.04 * fuel;" +
+    "  col += vec3(0.35, 1.0, 0.7) * pow(max(tongue, 0.0), 3.0) * 0.12 * fuel;" +
+    "  col *= mix(1.0, 0.95 + 0.05 * sin(uTime * 7.0 + sin(uTime * 13.0) * 1.5), fuel);" +
     "  float g = 1.0 - vUv.y;" +
     "  float ga = g < 0.46 ? mix(0.14, 0.50, g / 0.46) : mix(0.50, 0.80, (g - 0.46) / 0.54);" +
     "  col = mix(col, vec3(0.008, 0.04, 0.024), ga);" +
