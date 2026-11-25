@@ -424,12 +424,12 @@
     "  float lum = dot(probe, vec3(0.299, 0.587, 0.114));" +
     "  float depth = clamp(0.7 * lum + 0.3 * (1.0 - vUv.y), 0.0, 1.0);" +
     "  float fuel = smoothstep(0.22, 0.7, lum);" +
-    "  float wave = sin(uvImg.x * 4.0 + uTime * 0.25 + sin(uvImg.y * 3.0 - uTime * 0.18) * 1.5);" +
-    "  float ripple = sin(uvImg.x * 9.0 - uTime * 0.5 + uvImg.y * 4.0);" +
-    "  vec2 sway = vec2(sin(uTime * 0.21), cos(uTime * 0.15)) * 0.6;" +
+    "  float wave = sin(uvImg.x * 4.0 + uTime * 0.7 + sin(uvImg.y * 3.0 - uTime * 0.5) * 1.5);" +
+    "  float ripple = sin(uvImg.x * 9.0 - uTime * 1.4 + uvImg.y * 4.0);" +
+    "  vec2 sway = vec2(sin(uTime * 0.5), cos(uTime * 0.38)) * 0.6;" +
     "  vec2 mv = (uShift + sway) * (depth - 0.45) * 0.034;" +
     "  mv.x += wave * 0.006 * fuel;" +
-    "  mv.x += sin(vUv.y * 140.0 + uTime * 1.3) * 0.0009 * (1.0 - smoothstep(0.05, 0.3, vUv.y));" +
+    "  mv.x += sin(vUv.y * 140.0 + uTime * 2.2) * 0.0009 * (1.0 - smoothstep(0.05, 0.3, vUv.y));" +
     "  vec3 col = texture2D(uTex, uvImg + mv).rgb;" +
     "  col *= 1.0 + wave * 0.16 * fuel + ripple * 0.05 * fuel;" +
     "  col += vec3(0.35, 1.0, 0.7) * pow(max(wave, 0.0), 3.0) * 0.10 * fuel;" +
@@ -497,8 +497,8 @@
       requestAnimationFrame(frame);
       if (document.hidden) return;
       if (start === null) start = now;
-      sx += (tx - sx) * 0.04;
-      sy += (ty - sy) * 0.04;
+      sx += (tx - sx) * 0.08;
+      sy += (ty - sy) * 0.08;
       gl.uniform1f(uTime, (now - start) / 1000);
       gl.uniform2f(uShift, sx, sy);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
