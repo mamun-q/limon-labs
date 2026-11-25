@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LIMON Labs — 3D পরীক্ষা</title>
+<style>
+  body{background:#04120c;color:#e9f6ef;font-family:sans-serif;margin:0;padding:22px 18px;line-height:1.6}
+  h1{font-size:1.25rem;margin-bottom:4px}
+  p.sub{color:#a7c4b5;margin-top:0}
+  .row{background:rgba(255,255,255,.06);border:1px solid rgba(52,211,153,.25);border-radius:12px;padding:12px 14px;margin-top:12px;word-break:break-word}
+  .k{color:#34d399;font-weight:700}
+  .ok{color:#6ee7b7}.bad{color:#fca5a5}
+  canvas{display:block;margin-top:12px;border-radius:12px}
+</style>
+</head>
+<body>
+<h1>LIMON Labs — 3D পরীক্ষা</h1>
+<p class="sub">এই পেজটা তোমার ফোন নিজেই পরীক্ষা করে বলবে 3D চলছে কিনা। নিচের ফলাফলের একটা screenshot পাঠালেই হবে।</p>
+<div id="out"></div>
+<canvas id="cv" width="300" height="190"></canvas>
+
+<script>
+(function () {
+  var out = document.getElementById("out");
+  function row(k, v, cls) {
+    var d = document.createElement("div");
+    d.className = "row";
+    d.innerHTML = '<span class="k">' + k + ': </span><span class="' + (cls || "") + '">' + v + "</span>";
+    out.appendChild(d);
+  }
+  row("ব্রাউজার", navigator.userAgent);
+  row("পর্দা", window.innerWidth + " × " + window.innerHeight + " · DPR " + (window.devicePixelRatio || 1));
+
+  var cv = document.getElementById("cv");
+  var gl = null;
+  try {
+    gl = cv.getContext("webgl", { alpha: true, antialias: true, powerPreference: "low-power" });
+  } catch (e) { /* fallthrough */ }
+  if (!gl) {
+    row("WebGL (3D ইঞ্জিন)", "পাওয়া যায়নি — এই ফোনে 3D চলবে না", "bad");
+    return;
+  }
+  row("WebGL (3D ইঞ্জিন)", "আছে ✓", "ok");
+  var dbg = gl.getExtension("WEBGL_debug_renderer_info");
+  if (dbg) row("গ্রাফিক্স", gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL));
+
+  /* The exact shader pair that broke before (uPoint precision) — prove it links here */
+  function sh(type, src) {
+    var s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null;
+  }
+  var vs = "attribute vec3 p; attribute float aSeed; uniform mat4 uMVP; uniform float uPoint; uniform float uTime; varying float vSeed;" +
+    "void main(){ vSeed = aSeed; vec4 mv = uMVP * vec4(p, 1.0); if (uPoint > 0.5) { gl_PointSize = (2.2 + aSeed * 3.4) * (120.0 / -mv.z); } gl_Position = mv; }";
+  var fs = "precision mediump float; uniform vec4 uColor; uniform highp float uPoint; uniform float uTime; varying float vSeed;" +
+    "void main(){ float a = uColor.a; if (uPoint > 0.5) { vec2 d = gl_PointCoord - 0.5; a *= smoothstep(0.5, 0.0, length(d)); } gl_FragColor = vec4(uColor.rgb, a); }";
+  var v = sh(gl.VERTEX_SHADER, vs), f = sh(gl.FRAGMENT_SHADER, fs);
+  var pr = gl.createProgram();
+  var linked = false;
+  if (v && f) {
+    gl.attachShader(pr, v); gl.attachShader(pr, f); gl.linkProgram(pr);
+    linked = gl.getProgramParameter(pr, gl.LINK_STATUS);
+  }
+  row("সাইটের 3D শেডার", linked ? "ঠিকমতো চলছে ✓" : "লিংক হচ্ছে না ✗", linked ? "ok" : "bad");
+
+  /* Draw a test orb-like circle so we can see rendering works */
+  if (linked) {
+    gl.clearColor(0.02, 0.10, 0.06, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    var pos = new Float32Array([0, 0, 0]);
+    var seed = new Float32Array([0.5]);
+    var buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, pos, gl.STATIC_DRAW);
+    var lp = gl.getAttribLocation(pr, "p");
+    gl.enableVertexAttribArray(lp);
+    gl.vertexAttribPointer(lp, 3, gl.FLOAT, false, 0, 0);
+    var sb = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, sb);
+    gl.bufferData(gl.ARRAY_BUFFER, seed, gl.STATIC_DRAW);
+    var ls = gl.getAttribLocation(pr, "aSeed");
+    gl.enableVertexAttribArray(ls);
+    gl.vertexAttribPointer(ls, 1, gl.FLOAT, false, 0, 0);
+    gl.useProgram(pr);
+    gl.uniformMatrix4fv(gl.getUniformLocation(pr, "uMVP"), false,
+      [0.01,0,0,0, 0,0.016,0,0, 0,0,1,0, 0,0,0,1]);
+    gl.uniform4f(gl.getUniformLocation(pr, "uColor"), 0.3, 1.0, 0.7, 1.0);
+    gl.uniform1f(gl.getUniformLocation(pr, "uPoint"), 1);
+    gl.uniform1f(gl.getUniformLocation(pr, "uTime"), 0);
+    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+    gl.drawArrays(gl.POINTS, 0, 1);
+    row("ছোট্ট পরীক্ষা-আলো", "নিচের বাক্সে সবুজ আলোর বিন্দু দেখা উচিত");
+  }
+
+  /* Is the server sending the newest script? (bypasses cache) */
+  fetch("script.js", { cache: "no-store" }).then(function (r) { return r.text(); }).then(function (t) {
+    var fresh = t.indexOf("alpha: true") !== -1 && t.indexOf("uniform highp float uPoint") !== -1;
+    row("সার্ভারের কোড", fresh ? "সর্বশেষ সংস্করণটাই আছে ✓" : "পুরনো কোড!", fresh ? "ok" : "bad");
+  }).catch(function () { row("সার্ভারের কোড", "যাচাই করা যায়নি"); });
+})();
+</script>
+</body>
+</html>
