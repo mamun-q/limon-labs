@@ -32,6 +32,13 @@ body{
   url("bg.webp") 50% 0% / cover no-repeat,
   var(--bg-deep);}
 
+/* Live 3D fog canvas — sits above the static painting, below everything */
+.fog-3d{
+  position:fixed;inset:0;width:100%;height:100%;z-index:-1;display:block;
+  opacity:0;transition:opacity 1.4s ease;pointer-events:none;
+}
+.fog-3d.on{opacity:1}
+
 /* ---------- Header ---------- */
 .site-header{
   position:relative;z-index:5;

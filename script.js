@@ -378,3 +378,104 @@
     gl.disable(gl.BLEND);
   }
 })();
+
+/* ---------- Live 3D fog background ----------
+   One fullscreen quad + an FBM-noise fragment shader: emerald mist that
+   drifts forever, with a soft aurora band near the top. No textures and
+   no cross-stage float uniforms (PowerVR-safe), rendered at 0.75 DPR max
+   because fog is soft anyway — kind to cheap GPUs. If WebGL or the
+   shader is unavailable, the static aurora painting underneath remains. */
+(function () {
+  "use strict";
+  var c = document.getElementById("fogCanvas");
+  if (!c) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  var gl;
+  try {
+    gl = c.getContext("webgl", { alpha: false, antialias: false, powerPreference: "low-power" });
+  } catch (e) { return; }
+  if (!gl) return;
+
+  function sh(type, src) {
+    var s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null;
+  }
+  var vs = sh(gl.VERTEX_SHADER,
+    "attribute vec2 p; varying mediump vec2 vUv;" +
+    "void main(){ vUv = p * 0.5 + 0.5; gl_Position = vec4(p, 0.0, 1.0); }");
+  var fs = sh(gl.FRAGMENT_SHADER,
+    "precision mediump float;" +
+    "varying mediump vec2 vUv;" +
+    "uniform float uTime; uniform vec2 uRes;" +
+    "float hash(vec2 p){ p = fract(p * vec2(234.34, 435.345)); p += dot(p, p + 34.23); return fract(p.x * p.y); }" +
+    "float noise(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);" +
+    "  float a = hash(i); float b = hash(i + vec2(1.0, 0.0));" +
+    "  float cc = hash(i + vec2(0.0, 1.0)); float d = hash(i + vec2(1.0, 1.0));" +
+    "  return mix(mix(a, b, f.x), mix(cc, d, f.x), f.y); }" +
+    "float fbm(vec2 p){ float v = 0.0; float amp = 0.55;" +
+    "  for (int i = 0; i < 4; i++){ v += amp * noise(p); p = p * 2.03 + vec2(17.3, 9.1); amp *= 0.55; }" +
+    "  return v; }" +
+    "void main(){" +
+    "  vec2 uv = vUv;" +
+    "  vec2 p = vec2(uv.x * uRes.x / uRes.y, uv.y);" +
+    "  float t = uTime * 0.016;" +
+    "  float warp = noise(p * 1.3 - vec2(t * 0.5, t * 0.13));" +
+    "  float f1 = fbm(p * 1.6 + vec2(t * 0.7, t * 0.22) + warp * 1.3);" +
+    "  float f2 = fbm(p * 3.4 - vec2(t * 0.9, t * 0.35) + 3.7);" +
+    "  float fog = clamp(f1 * 0.85 + f2 * 0.5 - 0.22, 0.0, 1.0);" +
+    "  float band = exp(-abs(uv.y - 0.85 - 0.08 * sin(uv.x * 3.0 + uTime * 0.05 + f1 * 4.0)) * 5.0);" +
+    "  vec3 col = vec3(0.004, 0.028, 0.018);" +
+    "  col = mix(col, vec3(0.014, 0.15, 0.095), smoothstep(0.05, 0.5, fog));" +
+    "  col = mix(col, vec3(0.05, 0.5, 0.32), smoothstep(0.45, 0.8, fog) * 0.85);" +
+    "  col += vec3(0.35, 1.0, 0.68) * pow(smoothstep(0.62, 0.95, fog), 2.0) * 0.22;" +
+    "  col += vec3(0.25, 0.95, 0.62) * band * (0.18 + 0.45 * fog);" +
+    "  col *= mix(0.5, 1.0, smoothstep(0.0, 0.8, uv.y));" +
+    "  col *= mix(1.0, 0.8, smoothstep(0.75, 1.0, uv.y));" +
+    "  gl_FragColor = vec4(col, 1.0);" +
+    "}");
+  if (!vs || !fs) return;
+  var pr = gl.createProgram();
+  gl.attachShader(pr, vs);
+  gl.attachShader(pr, fs);
+  gl.linkProgram(pr);
+  if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) return;
+  gl.useProgram(pr);
+
+  var buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  var loc = gl.getAttribLocation(pr, "p");
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  var uTime = gl.getUniformLocation(pr, "uTime");
+  var uRes = gl.getUniformLocation(pr, "uRes");
+
+  function resize() {
+    var w = c.clientWidth, h = c.clientHeight;
+    if (!w || !h) return;
+    var dpr = Math.min(window.devicePixelRatio || 1, 0.75);
+    c.width = Math.round(w * dpr);
+    c.height = Math.round(h * dpr);
+    gl.viewport(0, 0, c.width, c.height);
+    gl.uniform2f(uRes, c.width, c.height);
+  }
+  resize();
+  var rt = null;
+  window.addEventListener("resize", function () {
+    clearTimeout(rt);
+    rt = setTimeout(resize, 200);
+  });
+
+  var start = null;
+  function frame(now) {
+    requestAnimationFrame(frame);
+    if (document.hidden) return;
+    if (start === null) start = now;
+    gl.uniform1f(uTime, (now - start) / 1000);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+  c.classList.add("on");
+  requestAnimationFrame(frame);
+})();
