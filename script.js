@@ -379,3 +379,124 @@
   }
 })();
 
+
+/* ---------- Live 3D depth background ----------
+   The SAME aurora painting (bg.webp), drawn by WebGL with a depth map
+   derived from the painting itself (bright ribbons read as near, dark
+   water as far), so the scene gains real depth: it sways gently on its
+   own and leans with the pointer. Framing replicates the CSS layer
+   exactly (cover, top-centre) and the readability gradient is baked in,
+   so the crossfade from the static layer is seamless. Any failure —
+   no WebGL, shader rejected, image missing — leaves the static
+   painting untouched. No canvas-generated textures (PowerVR-safe);
+   the only texture is the image file itself. */
+(function () {
+  "use strict";
+  var c = document.getElementById("bgCanvas");
+  if (!c) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  var gl;
+  try {
+    gl = c.getContext("webgl", { alpha: false, antialias: false, powerPreference: "low-power" });
+  } catch (e) { return; }
+  if (!gl) return;
+
+  function sh(type, src) {
+    var s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null;
+  }
+  var vs = sh(gl.VERTEX_SHADER,
+    "attribute vec2 p; varying mediump vec2 vUv;" +
+    "void main(){ vUv = p * 0.5 + 0.5; gl_Position = vec4(p, 0.0, 1.0); }");
+  var fs = sh(gl.FRAGMENT_SHADER,
+    "precision mediump float;" +
+    "varying mediump vec2 vUv;" +
+    "uniform sampler2D uTex; uniform vec2 uRes; uniform vec2 uImg;" +
+    "uniform float uTime; uniform vec2 uShift;" +
+    "void main(){" +
+    "  float scale = max(uRes.x / uImg.x, uRes.y / uImg.y) * 1.02;" +
+    "  vec2 scaled = uImg * scale;" +
+    "  vec2 offPx = vec2((uRes.x - scaled.x) * 0.5, uRes.y - scaled.y);" +
+    "  vec2 uvImg = (vUv * uRes - offPx) / scaled;" +
+    "  vec3 probe = texture2D(uTex, uvImg).rgb;" +
+    "  float lum = dot(probe, vec3(0.299, 0.587, 0.114));" +
+    "  float depth = clamp(0.7 * lum + 0.3 * (1.0 - vUv.y), 0.0, 1.0);" +
+    "  vec2 sway = vec2(sin(uTime * 0.21), cos(uTime * 0.15)) * 0.6;" +
+    "  vec2 mv = (uShift + sway) * (depth - 0.45) * 0.034;" +
+    "  vec3 col = texture2D(uTex, uvImg + mv).rgb;" +
+    "  float g = 1.0 - vUv.y;" +
+    "  float ga = g < 0.46 ? mix(0.14, 0.50, g / 0.46) : mix(0.50, 0.80, (g - 0.46) / 0.54);" +
+    "  col = mix(col, vec3(0.008, 0.04, 0.024), ga);" +
+    "  gl_FragColor = vec4(col, 1.0);" +
+    "}");
+  if (!vs || !fs) return;
+  var pr = gl.createProgram();
+  gl.attachShader(pr, vs);
+  gl.attachShader(pr, fs);
+  gl.linkProgram(pr);
+  if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) return;
+  gl.useProgram(pr);
+
+  var buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  var loc = gl.getAttribLocation(pr, "p");
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  var uRes = gl.getUniformLocation(pr, "uRes");
+  var uImg = gl.getUniformLocation(pr, "uImg");
+  var uTime = gl.getUniformLocation(pr, "uTime");
+  var uShift = gl.getUniformLocation(pr, "uShift");
+  gl.uniform1i(gl.getUniformLocation(pr, "uTex"), 0);
+
+  function resize() {
+    var w = c.clientWidth, h = c.clientHeight;
+    if (!w || !h) return;
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.25);
+    c.width = Math.round(w * dpr);
+    c.height = Math.round(h * dpr);
+    gl.viewport(0, 0, c.width, c.height);
+    gl.uniform2f(uRes, c.width, c.height);
+  }
+  resize();
+  var rt = null;
+  window.addEventListener("resize", function () {
+    clearTimeout(rt);
+    rt = setTimeout(resize, 200);
+  });
+
+  var tx = 0, ty = 0, sx = 0, sy = 0;
+  window.addEventListener("pointermove", function (e) {
+    tx = (e.clientX / window.innerWidth - 0.5) * 1.1;
+    ty = (e.clientY / window.innerHeight - 0.5) * -0.7;
+  }, { passive: true });
+
+  var img = new Image();
+  img.onload = function () {
+    var tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.uniform2f(uImg, img.naturalWidth, img.naturalHeight);
+    var start = null;
+    function frame(now) {
+      requestAnimationFrame(frame);
+      if (document.hidden) return;
+      if (start === null) start = now;
+      sx += (tx - sx) * 0.04;
+      sy += (ty - sy) * 0.04;
+      gl.uniform1f(uTime, (now - start) / 1000);
+      gl.uniform2f(uShift, sx, sy);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
+    c.classList.add("on");
+    requestAnimationFrame(frame);
+  };
+  img.src = "bg.webp";
+})();

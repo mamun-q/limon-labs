@@ -32,6 +32,14 @@ body{
   url("bg.webp") 50% 0% / cover no-repeat,
   var(--bg-deep);}
 
+/* Live 3D depth backdrop — the same painting, re-rendered with depth
+   parallax above the static .aurora layer; hidden until its first frame */
+.bg-3d{
+  position:fixed;inset:0;width:100%;height:100%;z-index:-1;display:block;
+  opacity:0;transition:opacity 1.2s ease;pointer-events:none;
+}
+.bg-3d.on{opacity:1}
+
 /* ---------- Header ---------- */
 .site-header{
   position:relative;z-index:5;
