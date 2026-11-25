@@ -131,17 +131,33 @@
     resizeTimer = setTimeout(resize, 150);
   });
 
-  /* Pointer parallax (desktop) + gentle idle sway (everywhere) */
-  var tx = 0, ty = 0, sx = 0, sy = 0;
+  /* Inputs — desktop pointer, phone tilt, touch position, and scroll all
+     feed the same shift, so the scene answers a hand on any device. */
+  var ptx = 0, pty = 0;   /* pointer / touch position */
+  var ttx = 0, tty = 0;   /* device tilt */
+  var scy = 0;            /* scroll parallax */
+  var sx = 0, sy = 0;     /* smoothed shift actually drawn */
   window.addEventListener("pointermove", function (e) {
-    if (e.pointerType === "touch") return;
     var r = canvas.getBoundingClientRect();
     if (!r.width) return;
     var cx = (e.clientX - (r.left + r.width / 2)) / r.width;
     var cy = (e.clientY - (r.top + r.height / 2)) / r.height;
-    tx = Math.max(-1, Math.min(1, cx)) * 0.030;
-    ty = Math.max(-1, Math.min(1, -cy)) * 0.022;
+    ptx = Math.max(-1, Math.min(1, cx)) * 0.034;
+    pty = Math.max(-1, Math.min(1, -cy)) * 0.026;
   }, { passive: true });
+  window.addEventListener("deviceorientation", function (e) {
+    if (e.gamma === null || e.beta === null) return;
+    ttx = Math.max(-1, Math.min(1, e.gamma / 22)) * 0.034;
+    tty = Math.max(-1, Math.min(1, (e.beta - 42) / 22)) * -0.026;
+  }, { passive: true });
+  function onScroll() {
+    var r = canvas.getBoundingClientRect();
+    if (!r.height) return;
+    var prog = Math.max(-1, Math.min(1, -r.top / r.height));
+    scy = prog * 0.022;
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
 
   var visible = true;
   if ("IntersectionObserver" in window) {
@@ -156,10 +172,10 @@
     if (document.hidden || !visible) return;
     if (start === null) start = ts;
     var t = (ts - start) / 1000;
-    var swayX = Math.sin(t * 0.40) * 0.010;
-    var swayY = Math.sin(t * 0.31 + 1.3) * 0.007;
-    sx += ((tx + swayX) - sx) * 0.045;
-    sy += ((ty + swayY) - sy) * 0.045;
+    var swayX = Math.sin(t * 0.40) * 0.012;
+    var swayY = Math.sin(t * 0.31 + 1.3) * 0.009;
+    sx += ((ptx + ttx + swayX) - sx) * 0.05;
+    sy += ((pty + tty + scy + swayY) - sy) * 0.05;
     gl.uniform2f(uShift, sx, sy);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
