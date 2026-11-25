@@ -415,6 +415,14 @@
     "varying mediump vec2 vUv;" +
     "uniform sampler2D uTex; uniform vec2 uRes; uniform vec2 uImg;" +
     "uniform float uTime; uniform vec2 uShift;" +
+    "float hash(vec2 p){ p = fract(p * vec2(234.34, 435.345)); p += dot(p, p + 34.23); return fract(p.x * p.y); }" +
+    "float noise(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);" +
+    "  float a = hash(i); float b = hash(i + vec2(1.0, 0.0));" +
+    "  float c2 = hash(i + vec2(0.0, 1.0)); float d = hash(i + vec2(1.0, 1.0));" +
+    "  return mix(mix(a, b, f.x), mix(c2, d, f.x), f.y); }" +
+    "float fbm(vec2 p){ float v = 0.0; float a2 = 0.5;" +
+    "  for(int i = 0; i < 3; i++){ v += a2 * noise(p); p = p * 2.03 + vec2(17.3, 9.1); a2 *= 0.5; }" +
+    "  return v; }" +
     "void main(){" +
     "  float scale = max(uRes.x / uImg.x, uRes.y / uImg.y) * 1.02;" +
     "  vec2 scaled = uImg * scale;" +
@@ -432,16 +440,17 @@
     "  mv.x += wave * 0.002 * fuel;" +
     "  mv.y -= (0.5 + 0.5 * tongue) * 0.0028 * fuel;" +
     "  float smoke = 1.0 - smoothstep(0.10, 0.45, lum);" +
-    "  float curlUp = sin(uvImg.y * 4.0 - uTime * 0.8 + sin(uvImg.x * 3.0 + uvImg.y * 1.5) * 1.5);" +
-    "  mv.x += curlUp * 0.010 * (0.6 + 0.7 * uvImg.y) * smoke;" +
-    "  mv.x += sin(uvImg.y * 2.0 - uTime * 0.2) * 0.004 * smoke;" +
-    "  mv.y += sin(uvImg.x * 3.0 + uvImg.y * 3.0 - uTime * 0.8) * 0.005 * smoke;" +
+    "  vec2 sp = uvImg * vec2(3.0, 2.2);" +
+    "  float sn1 = fbm(sp + vec2(0.0, -uTime * 0.22));" +
+    "  float sn2 = fbm(sp * 1.7 + vec2(5.2, 1.3) + vec2(0.0, -uTime * 0.34));" +
+    "  vec2 swarp = vec2(sn1 - 0.5, sn2 - 0.5);" +
+    "  mv += swarp * 0.030 * smoke * (0.55 + 0.75 * uvImg.y);" +
     "  mv.x += sin(vUv.y * 140.0 + uTime * 13.0) * 0.0009 * (1.0 - smoothstep(0.05, 0.3, vUv.y));" +
     "  vec3 col = texture2D(uTex, uvImg + mv).rgb;" +
     "  col *= 1.0 + tongue * 0.50 * fuel + wave * 0.12 * fuel + ripple * 0.07 * fuel;" +
     "  col += vec3(0.35, 1.0, 0.7) * pow(max(tongue, 0.0), 3.0) * 0.45 * fuel;" +
     "  col += vec3(0.30, 0.95, 0.65) * pow(lum, 3.0) * 0.70 * (0.75 + 0.25 * tongue);" +
-    "  col *= 1.0 + 0.09 * sin(uvImg.x * 2.5 + uvImg.y * 4.0 - uTime * 0.9 + sin(uvImg.x * 4.0) * 1.2) * smoke;" +
+    "  col *= 1.0 + (sn1 - 0.5) * 0.22 * smoke + 0.05 * sin(uvImg.x * 2.5 + uvImg.y * 4.0 - uTime * 0.9) * smoke;" +
     "  col *= mix(1.0, 0.91 + 0.09 * sin(uTime * 7.0 + sin(uTime * 13.0) * 1.5), fuel);" +
     "  float g = 1.0 - vUv.y;" +
     "  float ga = g < 0.46 ? mix(0.14, 0.50, g / 0.46) : mix(0.50, 0.80, (g - 0.46) / 0.54);" +
