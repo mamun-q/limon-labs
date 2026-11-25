@@ -7,8 +7,8 @@
   --emerald-soft:rgba(52,211,153,.14);
   --text:#e9f6ef;
   --muted:#a7c4b5;
-  --glass:rgba(255,255,255,.06);
-  --glass-border:rgba(52,211,153,.22);
+  --glass:rgba(7,22,16,.58);
+  --glass-border:rgba(255,255,255,.14);
   --serif:"Fraunces",Georgia,serif;
   --sans:"Hind Siliguri","Segoe UI",sans-serif;
 }
@@ -24,9 +24,13 @@ body{
 }
 ::selection{background:rgba(16,185,129,.4)}
 
-/* ---------- Background: one static gradient (no animated/blurred layers) ---------- */
+/* ---------- Background: the aurora painting fills the whole page
+   (fixed, one static image + a dark readability gradient — no animated
+   or blurred layers, so cheap phones stay smooth) ---------- */
 .aurora{position:fixed;inset:0;z-index:-1;background:
-  radial-gradient(120% 60% at 50% 0%, #07231a 0%, var(--bg) 55%, var(--bg-deep) 100%);}
+  linear-gradient(180deg, rgba(3,12,8,.38) 0%, rgba(2,9,6,.66) 46%, rgba(2,8,5,.86) 100%),
+  url("bg.webp") 50% 0% / cover no-repeat,
+  var(--bg-deep);}
 
 /* ---------- Header ---------- */
 .site-header{
@@ -62,15 +66,12 @@ body{
 
 /* ---------- Hero ---------- */
 .hero{position:relative;text-align:center;padding:8px 18px 64px;max-width:1120px;margin:0 auto}
-/* Painted hero artwork (aurora + glass orb + water) with a lightweight
-   depth-parallax 3D layer on top — one textured quad, no 3D library,
-   so it stays smooth on cheap phones. The still image underneath is the
-   fallback if WebGL is unavailable. */
+/* Design 4 hero: no panel, no border — the live 3D orb floats directly
+   over the page-wide aurora backdrop. The still painting underneath is
+   the fallback if WebGL is unavailable. */
 .hero-art-wrap{
-  position:relative;border-radius:22px;overflow:hidden;
-  border:1px solid var(--glass-border);
-  box-shadow:0 18px 50px rgba(0,0,0,.5),0 0 44px rgba(16,185,129,.14);
-  margin-top:22px;background:#04120c;
+  position:relative;
+  margin-top:2px;
   touch-action:pan-y;cursor:grab;
 }
 .hero-art-wrap:active{cursor:grabbing}
@@ -102,6 +103,7 @@ body{
 
 /* ---------- Sections ---------- */
 .section{max-width:1120px;margin:0 auto;padding:52px 18px 8px}
+.section-label{text-align:center;font-size:.72rem;font-weight:600;letter-spacing:.38em;text-transform:uppercase;color:var(--emerald-bright);opacity:.85;margin-bottom:6px}
 .section-title{font-size:clamp(1.6rem,6vw,2.1rem);font-weight:700;text-align:center}
 .section-title::after{content:"";display:block;width:56px;height:3px;border-radius:2px;background:linear-gradient(90deg,transparent,var(--emerald),transparent);margin:10px auto 0}
 .section-lead{text-align:center;color:var(--muted);max-width:600px;margin:14px auto 0}
@@ -112,7 +114,7 @@ body{
   display:flex;flex-direction:column;gap:10px;
   background:var(--glass);border:1px solid var(--glass-border);border-radius:18px;
   padding:22px 20px;
-  box-shadow:0 0 0 1px rgba(255,255,255,.02) inset, 0 10px 34px rgba(0,0,0,.35), 0 0 22px rgba(16,185,129,.06);
+  box-shadow:0 1px 0 rgba(255,255,255,.06) inset, 0 10px 34px rgba(0,0,0,.35), 0 0 22px rgba(16,185,129,.07);
   transition:transform .25s ease, border-color .25s ease, box-shadow .25s ease;
 }
 .card:hover{transform:translateY(-4px);border-color:rgba(52,211,153,.5);box-shadow:0 16px 40px rgba(0,0,0,.45),0 0 30px rgba(16,185,129,.12)}
@@ -165,7 +167,13 @@ body{
 .principle p{color:var(--muted);font-size:.97rem}
 
 /* ---------- Footer ---------- */
-.site-footer{text-align:center;padding:56px 18px 34px;color:var(--muted);font-size:.94rem}
+.site-footer{
+  text-align:center;color:var(--muted);font-size:.94rem;
+  max-width:1120px;width:calc(100% - 36px);margin:56px auto 26px;
+  padding:24px 18px 20px;
+  background:var(--glass);border:1px solid var(--glass-border);border-radius:18px;
+  box-shadow:0 1px 0 rgba(255,255,255,.06) inset, 0 10px 34px rgba(0,0,0,.3);
+}
 .footer-wordmark{font-family:var(--serif);font-size:1.15rem;color:var(--text);margin-bottom:4px}
 
 /* ---------- Reveal on scroll ---------- */

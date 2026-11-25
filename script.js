@@ -32,7 +32,7 @@
 
   var gl;
   try {
-    gl = canvas.getContext("webgl", { alpha: false, antialias: true, powerPreference: "low-power" });
+    gl = canvas.getContext("webgl", { alpha: true, antialias: true, powerPreference: "low-power" });
   } catch (err) { return; }
   if (!gl) return;
 
@@ -144,7 +144,7 @@
     "  gl_FragColor = vec4(uColor.rgb, a);" +
     "}"
   );
-  if (!progBg || !progOrb || !progFx) return;
+  if (!progOrb || !progFx) return;
 
   /* ----- geometry ----- */
   var quadBuf = vbo([-1, -1, 1, -1, -1, 1, 1, 1]);
@@ -220,30 +220,13 @@
     return t;
   }
 
-  /* ----- backdrop texture + cover crop (matches the <img> CSS) ----- */
-  var bgTex = null, bgRect = [0, 0, 1, 1];
-  function coverRect(cw, ch, iw, ih) {
-    var ai = iw / ih, ac = cw / ch, w, h, x, y, POS_Y = 0.40;
-    if (ac > ai) { w = 1; h = ai / ac; x = 0; y = (1 - h) * (1 - POS_Y); }
-    else { h = 1; w = ac / ai; x = (1 - w) / 2; y = (1 - h) * (1 - POS_Y); }
-    return [x, y, w, h];
-  }
-  var bgImg = new Image();
-  bgImg.onload = function () {
-    bgTex = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, bgTex);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bgImg);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    resize();
-    canvas.classList.add("on");
-    heroImg.style.opacity = "0";
-    requestAnimationFrame(tick);
-  };
-  bgImg.src = "bg.webp";
+  /* Design 4: the canvas is transparent and the orb floats directly over
+     the page-wide aurora backdrop — no backdrop texture to load, so the
+     scene starts as soon as the shader programs are ready. */
+  resize();
+  canvas.classList.add("on");
+  heroImg.style.opacity = "0";
+  requestAnimationFrame(tick);
   var glowTex = glowTexture();
 
   /* ----- sizing ----- */
@@ -256,7 +239,6 @@
     canvas.height = Math.round(h * dpr);
     gl.viewport(0, 0, canvas.width, canvas.height);
     proj = mPersp(0.72, w / h, 0.1, 50);
-    if (bgImg.naturalWidth) bgRect = coverRect(w, h, bgImg.naturalWidth, bgImg.naturalHeight);
   }
   resize();
   var resizeTimer = null;
@@ -295,20 +277,6 @@
   }
 
   /* ----- draw helpers ----- */
-  function drawBg() {
-    gl.useProgram(progBg);
-    gl.disable(gl.DEPTH_TEST);
-    gl.disable(gl.BLEND);
-    var loc = gl.getAttribLocation(progBg, "p");
-    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
-    gl.enableVertexAttribArray(loc);
-    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, bgTex);
-    gl.uniform1i(gl.getUniformLocation(progBg, "uTex"), 0);
-    gl.uniform4f(gl.getUniformLocation(progBg, "uRect"), bgRect[0], bgRect[1], bgRect[2], bgRect[3]);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-  }
   function drawFx(geo, mvp, color, isPoints, count) {
     gl.useProgram(progFx);
     var loc = gl.getAttribLocation(progFx, "p");
@@ -381,7 +349,7 @@
   var perfT = 0, start = null;
   function tick(ts) {
     requestAnimationFrame(tick);
-    if (document.hidden || !visible || !bgTex) return;
+    if (document.hidden || !visible) return;
     if (start === null) start = ts;
     var t = (ts - start) / 1000;
     perfT = t;
@@ -400,9 +368,8 @@
     var view = mTrans(0, 0, -6.4);
     var groupView = mMul(view, group);
 
-    gl.clearColor(0.008, 0.05, 0.03, 1);
+    gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    drawBg();
 
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.BLEND);
