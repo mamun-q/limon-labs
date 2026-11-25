@@ -7,7 +7,7 @@
   --emerald-soft:rgba(52,211,153,.14);
   --text:#e9f6ef;
   --muted:#a7c4b5;
-  --glass:rgba(255,255,255,.045);
+  --glass:rgba(255,255,255,.06);
   --glass-border:rgba(52,211,153,.22);
   --serif:"Fraunces",Georgia,serif;
   --sans:"Hind Siliguri","Segoe UI",sans-serif;
@@ -24,15 +24,9 @@ body{
 }
 ::selection{background:rgba(16,185,129,.4)}
 
-/* ---------- Aurora background ---------- */
-.aurora{position:fixed;inset:0;z-index:-1;overflow:hidden;background:
+/* ---------- Background: one static gradient (no animated/blurred layers) ---------- */
+.aurora{position:fixed;inset:0;z-index:-1;background:
   radial-gradient(120% 60% at 50% 0%, #07231a 0%, var(--bg) 55%, var(--bg-deep) 100%);}
-.aurora-wave{position:absolute;left:-25%;width:150%;height:46vh;border-radius:50%;filter:blur(46px);opacity:.5;will-change:transform}
-.wave-1{top:-10vh;background:radial-gradient(closest-side, rgba(16,185,129,.34), transparent 70%);animation:drift1 26s ease-in-out infinite alternate}
-.wave-2{top:6vh;background:radial-gradient(closest-side, rgba(45,212,191,.20), transparent 70%);animation:drift2 34s ease-in-out infinite alternate}
-.wave-3{top:22vh;background:radial-gradient(closest-side, rgba(5,150,105,.22), transparent 70%);animation:drift1 40s ease-in-out infinite alternate-reverse}
-@keyframes drift1{from{transform:translateX(-4%) translateY(0) scale(1)}to{transform:translateX(5%) translateY(3vh) scale(1.12)}}
-@keyframes drift2{from{transform:translateX(5%) translateY(2vh) scale(1.08)}to{transform:translateX(-5%) translateY(-1vh) scale(.96)}}
 
 /* ---------- Header ---------- */
 .site-header{
@@ -52,36 +46,15 @@ body{
 
 /* ---------- Hero ---------- */
 .hero{position:relative;text-align:center;padding:8px 18px 64px;max-width:1120px;margin:0 auto}
-.orb-stage{position:relative;width:min(320px,78vw);aspect-ratio:1;margin:6px auto 0}
-.orb-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:0;transition:opacity .8s ease}
-.orb-canvas.on{opacity:1}
-/* Static fallback orb (CSS only) */
-.orb-fallback{position:absolute;inset:0;display:grid;place-items:center;transition:opacity .5s}
-.orb-fallback.off{opacity:0;pointer-events:none}
-.orb-core{
-  width:44%;aspect-ratio:1;border-radius:50%;
-  background:radial-gradient(circle at 34% 30%, #a7f3d0 0%, #34d399 30%, #059669 62%, #064e3b 100%);
-  box-shadow:0 0 44px rgba(52,211,153,.55),0 0 120px rgba(16,185,129,.35),inset -12px -16px 34px rgba(0,0,0,.45),inset 8px 10px 24px rgba(255,255,255,.25);
+/* Painted hero artwork (aurora + glass orb + water) — a still image, so no
+   WebGL or animation cost on phones. */
+.hero-art{
+  display:block;width:100%;height:clamp(430px,128vw,700px);
+  object-fit:cover;object-position:50% 40%;
+  border-radius:22px;border:1px solid var(--glass-border);
+  box-shadow:0 18px 50px rgba(0,0,0,.5),0 0 44px rgba(16,185,129,.14);
+  margin-top:22px;background:#04120c;
 }
-.orb-ring{position:absolute;border:1.5px solid rgba(52,211,153,.55);border-radius:50%;box-shadow:0 0 12px rgba(52,211,153,.35)}
-.ring-a{width:78%;height:30%;transform:rotate(-18deg)}
-.ring-b{width:88%;height:34%;transform:rotate(24deg);border-color:rgba(167,243,208,.35)}
-.orb-spark{position:absolute;width:5px;height:5px;border-radius:50%;background:#d1fae5;box-shadow:0 0 10px 3px rgba(167,243,208,.8)}
-.spark-1{top:20%;left:26%}
-.spark-2{top:32%;right:20%}
-.spark-3{bottom:24%;left:34%}
-/* Water ripple reflection under hero */
-.water{
-  height:52px;max-width:520px;margin:-6px auto 4px;border-radius:50%;
-  background:
-    repeating-radial-gradient(ellipse 60% 100% at 50% 0%, rgba(52,211,153,.14) 0 2px, transparent 2px 14px),
-    radial-gradient(60% 100% at 50% 0%, rgba(16,185,129,.22), transparent 70%);
-  filter:blur(1px);opacity:.75;
-  -webkit-mask-image:linear-gradient(to bottom, rgba(0,0,0,.9), transparent);
-          mask-image:linear-gradient(to bottom, rgba(0,0,0,.9), transparent);
-  animation:ripple 7s ease-in-out infinite;
-}
-@keyframes ripple{0%,100%{transform:scaleX(1)}50%{transform:scaleX(1.06)}}
 .hero-wordmark{font-family:var(--serif);font-weight:600;font-size:clamp(2.5rem,11vw,4.4rem);letter-spacing:.03em;line-height:1.1;margin-top:2px}
 .hero-tagline{font-size:clamp(1.3rem,5.4vw,1.8rem);font-weight:600;color:var(--emerald-bright);margin-top:8px}
 .hero-sub{color:var(--muted);max-width:560px;margin:12px auto 0;font-size:1.02rem}
@@ -95,7 +68,7 @@ body{
 .btn:active{transform:scale(.97)}
 .btn-primary{background:linear-gradient(135deg,#10b981,#059669);color:#032117;box-shadow:0 6px 22px rgba(16,185,129,.35)}
 .btn-primary:hover{box-shadow:0 8px 28px rgba(16,185,129,.5)}
-.btn-ghost{border:1px solid var(--glass-border);color:var(--text);background:rgba(255,255,255,.03);backdrop-filter:blur(6px)}
+.btn-ghost{border:1px solid var(--glass-border);color:var(--text);background:rgba(255,255,255,.05)}
 .btn-ghost:hover{border-color:rgba(52,211,153,.55)}
 .btn-card{background:linear-gradient(135deg,#10b981,#059669);color:#032117;padding:9px 22px;font-size:.96rem;box-shadow:0 4px 16px rgba(16,185,129,.28);margin-top:auto;align-self:flex-start}
 
@@ -111,7 +84,6 @@ body{
   display:flex;flex-direction:column;gap:10px;
   background:var(--glass);border:1px solid var(--glass-border);border-radius:18px;
   padding:22px 20px;
-  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
   box-shadow:0 0 0 1px rgba(255,255,255,.02) inset, 0 10px 34px rgba(0,0,0,.35), 0 0 22px rgba(16,185,129,.06);
   transition:transform .25s ease, border-color .25s ease, box-shadow .25s ease;
 }
@@ -140,7 +112,7 @@ body{
 /* ---------- About / contact boxes ---------- */
 .about-box{
   margin-top:26px;background:var(--glass);border:1px solid var(--glass-border);border-radius:18px;
-  padding:24px 22px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  padding:24px 22px;
   box-shadow:0 10px 34px rgba(0,0,0,.3);
 }
 .about-box p{color:var(--muted);margin-bottom:12px}
@@ -158,7 +130,7 @@ body{
 .principles{display:grid;grid-template-columns:1fr;gap:16px;margin-top:30px}
 .principle{
   text-align:center;background:var(--glass);border:1px solid var(--glass-border);border-radius:18px;
-  padding:26px 20px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  padding:26px 20px;
 }
 .principle .card-icon{margin-bottom:12px}
 .principle h3{font-size:1.15rem;margin-bottom:6px}
@@ -186,7 +158,7 @@ body{
 /* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce){
   html{scroll-behavior:auto}
-  .aurora-wave,.water,.badge-live .badge-dot{animation:none}
+  .badge-live .badge-dot{animation:none}
   .reveal{opacity:1;transform:none;transition:none}
   .card,.btn{transition:none}
 }
