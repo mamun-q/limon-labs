@@ -365,7 +365,7 @@
       mTrans(0, bobY, 0),
       mMul(mRotY(rotY + tiltY), mRotX(rotX + tiltX + Math.sin(t * 0.25) * 0.05))
     );
-    var view = mTrans(0, 0, -6.4);
+    var view = mTrans(0, 0, -5.55);
     var groupView = mMul(view, group);
 
     gl.clearColor(0, 0, 0, 0);
@@ -378,7 +378,7 @@
     gl.depthMask(false);
     drawGlowQuad(mMul(view, mMul(mTrans(0, bobY, -0.9), mScale(2.6))));
     /* glowing core */
-    drawFx(coreGeo.pos, mMul(proj, mMul(groupView, mScale(1))), [0.16, 0.9, 0.6, 0.26 + Math.sin(t * 1.6) * 0.06], false, 0);
+    drawFx(coreGeo.pos, mMul(proj, mMul(groupView, mScale(1))), [0.16, 0.9, 0.6, 0.19 + Math.sin(t * 1.6) * 0.05], false, 0);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, coreGeo.idx);
     gl.drawElements(gl.TRIANGLES, coreGeo.count, gl.UNSIGNED_SHORT, 0);
     gl.depthMask(true);
@@ -389,11 +389,11 @@
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
     gl.depthMask(false);
     var ringModelA = mMul(groupView, mMul(mRotX(Math.PI / 2.9), mMul(mRotY(0.4), mRotZ(t * 0.35))));
-    drawTorus(ringA, mMul(proj, ringModelA), [0.14, 0.72, 0.47, 0.70]);
+    drawTorus(ringA, mMul(proj, ringModelA), [0.10, 0.55, 0.36, 0.55]);
     var ringModelB = mMul(groupView, mMul(mRotX(Math.PI / 1.75), mMul(mRotY(-1.05), mRotZ(-t * 0.22))));
-    drawTorus(ringB, mMul(proj, ringModelB), [0.30, 0.78, 0.55, 0.34]);
+    drawTorus(ringB, mMul(proj, ringModelB), [0.16, 0.55, 0.38, 0.30]);
     var sparkModel = mMul(groupView, mRotY(t * 0.05));
-    drawFx(sparkBuf, mMul(proj, sparkModel), [0.75, 1.0, 0.88, 0.85], true, 240);
+    drawFx(sparkBuf, mMul(proj, sparkModel), [0.55, 0.90, 0.70, 0.85], true, 240);
     gl.depthMask(true);
     gl.disable(gl.BLEND);
   }
