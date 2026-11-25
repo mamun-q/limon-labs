@@ -104,7 +104,7 @@
     "uniform float uTime; uniform vec3 uCam;" +
     "void main(){" +
     "  vec3 N = normalize(vN); vec3 V = normalize(uCam - vWP);" +
-    "  float fres = pow(1.0 - abs(dot(N, V)), 2.3);" +
+    "  float fres = pow(1.0 - abs(dot(N, V)), 2.0);" +
     "  float swirl = sin(vObj.y * 7.0 + uTime * 0.6 + sin(vObj.x * 5.0 - uTime * 0.45) * 1.6) * 0.5 + 0.5;" +
     "  float swirl2 = sin(vObj.z * 9.0 - uTime * 0.35 + vObj.y * 4.0) * 0.5 + 0.5;" +
     "  vec3 deep = vec3(0.012, 0.16, 0.10);" +
@@ -116,7 +116,7 @@
     "  vec3 L2 = normalize(vec3(-0.7, -0.35, 0.6));" +
     "  float spec2 = pow(max(dot(reflect(-L2, N), V), 0.0), 26.0) * 0.35;" +
     "  col += vec3(0.85, 1.0, 0.95) * spec + vec3(0.35, 0.75, 0.9) * spec2;" +
-    "  col = mix(col, vec3(0.45, 1.0, 0.78), fres * 0.85);" +
+    "  col = mix(col, vec3(0.45, 1.0, 0.78), fres * 0.95);" +
     "  float alpha = mix(0.62, 1.0, fres);" +
     "  gl_FragColor = vec4(col, alpha);" +
     "}"
@@ -131,7 +131,7 @@
     "  if (uPoint > 0.5) { gl_PointSize = (2.2 + aSeed * 3.4) * (120.0 / -mv.z); }" +
     "  gl_Position = mv; }",
     "precision mediump float;" +
-    "uniform vec4 uColor; uniform float uPoint; uniform float uTime;" +
+    "uniform vec4 uColor; uniform highp float uPoint; uniform float uTime;" +
     "varying float vSeed;" +
     "void main(){" +
     "  float a = uColor.a;" +
@@ -186,9 +186,9 @@
     return { pos: vbo(pos), idx: ibo(idx), count: idx.length };
   }
   var orbGeo = sphereGeo(1.15, 48, 32);
-  var coreGeo = sphereGeo(0.58, 24, 16);
-  var ringA = torusGeo(1.62, 0.016, 110, 6);
-  var ringB = torusGeo(1.86, 0.010, 110, 6);
+  var coreGeo = sphereGeo(0.46, 24, 16);
+  var ringA = torusGeo(1.52, 0.013, 110, 6);
+  var ringB = torusGeo(1.70, 0.009, 110, 6);
 
   var sparkPos = [], sparkSeed = [];
   for (var i = 0; i < 240; i++) {
@@ -411,7 +411,7 @@
     gl.depthMask(false);
     drawGlowQuad(mMul(view, mMul(mTrans(0, bobY, -0.9), mScale(2.6))));
     /* glowing core */
-    drawFx(coreGeo.pos, mMul(proj, mMul(groupView, mScale(1))), [0.16, 0.9, 0.6, 0.30 + Math.sin(t * 1.6) * 0.07], false, 0);
+    drawFx(coreGeo.pos, mMul(proj, mMul(groupView, mScale(1))), [0.16, 0.9, 0.6, 0.26 + Math.sin(t * 1.6) * 0.06], false, 0);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, coreGeo.idx);
     gl.drawElements(gl.TRIANGLES, coreGeo.count, gl.UNSIGNED_SHORT, 0);
     gl.depthMask(true);
@@ -421,10 +421,10 @@
     /* rings + sparkles */
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
     gl.depthMask(false);
-    var ringModelA = mMul(groupView, mMul(mRotX(Math.PI / 2.35), mMul(mRotY(0.4), mRotZ(t * 0.35))));
-    drawTorus(ringA, mMul(proj, ringModelA), [0.20, 0.95, 0.65, 0.85]);
-    var ringModelB = mMul(groupView, mMul(mRotX(Math.PI / 1.75), mMul(mRotY(-0.6), mRotZ(-t * 0.22))));
-    drawTorus(ringB, mMul(proj, ringModelB), [0.65, 1.0, 0.85, 0.40]);
+    var ringModelA = mMul(groupView, mMul(mRotX(Math.PI / 2.9), mMul(mRotY(0.4), mRotZ(t * 0.35))));
+    drawTorus(ringA, mMul(proj, ringModelA), [0.14, 0.72, 0.47, 0.70]);
+    var ringModelB = mMul(groupView, mMul(mRotX(Math.PI / 1.75), mMul(mRotY(-1.05), mRotZ(-t * 0.22))));
+    drawTorus(ringB, mMul(proj, ringModelB), [0.30, 0.78, 0.55, 0.34]);
     var sparkModel = mMul(groupView, mRotY(t * 0.05));
     drawFx(sparkBuf, mMul(proj, sparkModel), [0.75, 1.0, 0.88, 0.85], true, 240);
     gl.depthMask(true);
