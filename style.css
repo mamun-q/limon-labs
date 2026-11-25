@@ -173,6 +173,11 @@ body{
 .reveal.in{opacity:1;transform:none}
 
 /* ---------- Larger screens ---------- */
+@media (max-width:560px){
+  .site-header{flex-direction:column;gap:6px;padding:14px 12px 10px}
+  .site-nav{justify-content:center;gap:8px 16px}
+  .site-nav a{font-size:.92rem}
+}
 @media (min-width:640px){
   .cards{grid-template-columns:repeat(2,1fr)}
   .principles{grid-template-columns:repeat(3,1fr)}
